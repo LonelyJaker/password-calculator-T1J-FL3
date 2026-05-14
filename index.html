@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>密码计算器 - 动态密码生成系统</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #121629;
+            --bg-card: #1a1f3a;
+            --accent-blue: #00d4ff;
+            --accent-cyan: #00fff2;
+            --accent-purple: #b389ff;
+            --accent-orange: #ff6b35;
+            --accent-green: #00ff88;
+            --text-primary: #e8eaf0;
+            --text-secondary: #9ca3bc;
+            --text-muted: #6b7280;
+            --border-color: rgba(0, 212, 255, 0.2);
+            --glow-blue: rgba(0, 212, 255, 0.4);
+            --glow-cyan: rgba(0, 255, 242, 0.3);
+            --shadow-dark: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* 动态背景效果 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(179, 137, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(0, 255, 136, 0.06) 0%, transparent 50%);
+            z-index: -1;
+            animation: bgPulse 15s ease-in-out infinite;
+        }
+        
+        @keyframes bgPulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+        }
+        
+        /* 网格背景 */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+            animation: gridMove 20s linear infinite;
+        }
+        
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        header {
+            text-align: center;
+            margin: 40px 0 50px;
+            position: relative;
+        }
+        
+        .title-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(32px, 5vw, 56px);
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-shadow: 0 0 40px var(--glow-blue);
+            animation: titleGlow 3s ease-in-out infinite;
+        }
+        
+        @keyframes titleGlow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+            font-weight: 400;
+        }
+        
+        /* 状态指示器 */
+        .status-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            box-shadow: var(--shadow-dark);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .status-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        main {
+            display: grid;
+            gap: 24px;
+        }
+        
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: var(--shadow-dark);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .section:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 1px;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(to bottom, var(--accent-cyan), var(--accent-blue));
+            border-radius: 2px;
+        }
+        
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .date-input-wrapper {
+            position: relative;
+            flex: 1;
+            min-width: 240px;
+        }
+        
+        #sopDate {
+            width: 100%;
+            padding: 14px 45px 14px 16px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+        
+        #sopDate:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(0, 255, 242, 0.2);
+            background: rgba(0, 255, 242, 0.05);
+        }
+        
+        #datePickerBtn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--accent-blue);
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s ease;
+            padding: 4px;
+        }
+        
+        #datePickerBtn:hover {
+            transform: translateY(-50%) scale(1.2);
+            filter: drop-shadow(0 0 8px var(--accent-blue));
+        }
+        
+        #calculateBtn {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 10px;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        #calculateBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 212, 255, 0.5);
+        }
+        
+        #calculateBtn:active {
+            transform: translateY(0);
+        }
+        
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            font-style: italic;
+        }
+        
+        /* 信息卡片网格 */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, var(--bg-secondary), rgba(26, 31, 58, 0.8));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .info-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .info-card:hover::before {
+            opacity: 1;
+        }
+        
+        .info-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2);
+        }
+        
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .card-value {
+            font-size: 28px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px var(--glow-cyan);
+        }
+        
+        .card-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        
+        /* 密码卡片特殊样式 */
+        .password-card {
+            background: linear-gradient(135deg, rgba(179, 137, 255, 0.1), rgba(0, 212, 255, 0.05));
+            border: 2px solid;
+            padding: 24px;
+            position: relative;
+        }
+        
+        .password-card::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--accent-blue), var(--accent-purple), var(--accent-cyan));
+            border-radius: 12px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .password-card:hover::after {
+            opacity: 0.5;
+        }
+        
+        .factory-card {
+            border-color: var(--accent-orange);
+        }
+        
+        .chip-card {
+            border-color: var(--accent-green);
+        }
+        
+        .factory-title {
+            color: var(--accent-orange);
+        }
+        
+        .chip-title {
+            color: var(--accent-green);
+        }
+        
+        .factory-value {
+            color: var(--accent-orange);
+            text-shadow: 0 0 15px rgba(255, 107, 53, 0.5);
+            font-size: 32px;
+        }
+        
+        .chip-value {
+            color: var(--accent-green);
+            text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+            font-size: 32px;
+        }
+        
+        .usage-tag {
+            display: inline-block;
+            background: rgba(220, 38, 38, 0.2);
+            color: #ff4444;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* 说明区域 */
+        .explanation {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(179, 137, 255, 0.05));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--shadow-dark);
+        }
+        
+        .explanation h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 1px;
+        }
+        
+        .explanation ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .explanation li {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 10px;
+            padding-left: 24px;
+            position: relative;
+        }
+        
+        .explanation li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent-blue);
+            font-weight: bold;
+        }
+        
+        footer {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+            padding: 30px 0 20px;
+            margin-top: 40px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        /* 日期选择器 */
+        #datePicker {
+            position: absolute;
+            z-index: 1000;
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-color);
+            border: 1px solid var(--accent-blue);
+            width: 320px;
+            padding: 20px;
+            display: none;
+            backdrop-filter: blur(10px);
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .calendar-nav {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            color: var(--accent-blue);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+        
+        .calendar-nav:hover {
+            background: var(--accent-blue);
+            color: var(--bg-primary);
+            transform: scale(1.1);
+        }
+        
+        #currentMonth {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            letter-spacing: 1px;
+        }
+        
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        
+        .weekday {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 6px 0;
+            font-weight: 600;
+        }
+        
+        #daysGrid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        
+        .day-btn {
+            background: var(--bg-secondary);
+            border: 1px solid transparent;
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+        
+        .day-btn:hover {
+            background: var(--accent-blue);
+            color: var(--bg-primary);
+            border-color: var(--accent-blue);
+            transform: scale(1.1);
+        }
+        
+        .day-btn.selected {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: var(--bg-primary);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px var(--glow-cyan);
+        }
+        
+        /* 复制按钮 */
+        .copy-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid var(--border-color);
+            color: var(--accent-blue);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .copy-btn:hover {
+            background: var(--accent-blue);
+            color: var(--bg-primary);
+            transform: scale(1.05);
+        }
+        
+        .copy-btn.copied {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+            border-color: var(--accent-green);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .status-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .input-container {
+                flex-direction: column;
+            }
+            
+            .date-input-wrapper {
+                min-width: 100%;
+            }
+            
+            #calculateBtn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 36px;
+            }
+        }
+        
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            animation: loading 1s infinite;
+        }
+        
+        @keyframes loading {
+            0%, 100% {
+                box-shadow: 0 0 0 0 var(--accent-blue),
+                            8px 0 0 0 var(--accent-blue),
+                            16px 0 0 0 var(--accent-blue);
+            }
+            33% {
+                box-shadow: 0 0 0 0 var(--accent-cyan),
+                            8px 0 0 0 var(--accent-blue),
+                            16px 0 0 0 var(--accent-blue);
+            }
+            66% {
+                box-shadow: 0 0 0 0 var(--accent-blue),
+                            8px 0 0 0 var(--accent-cyan),
+                            16px 0 0 0 var(--accent-blue);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title-wrapper">
+                <h1>🔐 密码计算器</h1>
+            </div>
+            <p class="subtitle">DYNAMIC PASSWORD GENERATION SYSTEM</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-dot"></span>
+                <span>系统运行中</span>
+            </div>
+            <div class="status-item">
+                ⏰ 下次更新: <span id="nextUpdate">--:--:--</span>
+            </div>
+            <div class="status-item">
+                📡 最后更新: <span id="lastUpdated">加载中...</span>
+            </div>
+        </div>
+
+        <main>
+            <section class="section">
+                <h2 class="section-title">⚙️ 工程模式配置</h2>
+                <div class="form-group">
+                    <label for="sopDate">SOP时间设置（YYYYMMDD）</label>
+                    <div class="input-container">
+                        <div class="date-input-wrapper">
+                            <input 
+                                type="text" 
+                                id="sopDate" 
+                                placeholder="例如: 20250930" 
+                                maxlength="8"
+                                value="20250930"
+                            >
+                            <button id="datePickerBtn" aria-label="选择日期">📅</button>
+                        </div>
+                        <button id="calculateBtn">
+                            🔢 计算密码
+                        </button>
+                    </div>
+                    <p class="form-hint">工程模式动态密码基于此时间计算</p>
+                </div>
+
+                <div class="card-grid">
+                    <div class="info-card">
+                        <div class="card-title">⏰ 当前时间</div>
+                        <div id="currentTime" class="card-value">------</div>
+                        <div class="card-hint">格式: MMDDHH (月日时)</div>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="card-title">📅 工程模式SOP</div>
+                        <div id="sopTimeDisplay" class="card-value">--------</div>
+                        <div class="card-hint">格式: YYYYMMDD</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">🔑 加密区SOP时间</h2>
+                <div class="card-grid">
+                    <div class="info-card">
+                        <div class="card-title">📅 加密区SOP</div>
+                        <div id="chipSopTime" class="card-value">20250830</div>
+                        <div class="card-hint">固定值（不可修改）</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">🔐 生成的密码</h2>
+                
+                <div class="card-grid">
+                    <div class="info-card password-card factory-card">
+                        <button class="copy-btn" onclick="copyPassword('factory')">
+                            📋 复制
+                        </button>
+                        <div class="card-title factory-title">🏭 工程模式动态密码</div>
+                        <div class="usage-tag">蓝牙电话进入使用</div>
+                        <div id="factoryPassword" class="card-value factory-value">------</div>
+                        <div class="card-hint">每小时自动更新</div>
+                    </div>
+                </div>
+                
+                <div class="card-grid">
+                    <div class="info-card password-card chip-card">
+                        <button class="copy-btn" onclick="copyPassword('chip')">
+                            📋 复制
+                        </button>
+                        <div class="card-title chip-title">🔑 加密区动态密码</div>
+                        <div class="usage-tag">工程模式内使用</div>
+                        <div id="chipPassword" class="card-value chip-value">------</div>
+                        <div class="card-hint">基于固定SOP 20250830</div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="explanation">
+                <h3>ℹ️ 计算规则说明</h3>
+                <ul>
+                    <li>工程模式动态密码 = (用户设置的SOP时间 × 当前时间MMDDHH - 当前小时数) 的最后六位</li>                 
+                    <li>加密区动态密码 = (固定SOP时间20250830 × 当前时间MMDDHH) 的最后六位</li>
+                    <li>系统每小时自动重新计算所有密码</li>
+                    <li>修改SOP时间后需点击"计算密码"按钮更新工程模式密码</li>
+                </ul>
+            </div>
+        </main>
+
+        <footer>
+            © 2025 密码计算器 | 动态密码生成系统 v2.0
+        </footer>
+    </div>
+
+    <!-- 日期选择器 -->
+    <div id="datePicker">
+        <div class="calendar-header">
+            <button id="prevMonth" class="calendar-nav" aria-label="上一月">◀</button>
+            <div id="currentMonth">2025年9月</div>
+            <button id="nextMonth" class="calendar-nav" aria-label="下一月">▶</button>
+        </div>
+        <div class="weekdays">
+            <div class="weekday">日</div>
+            <div class="weekday">一</div>
+            <div class="weekday">二</div>
+            <div class="weekday">三</div>
+            <div class="weekday">四</div>
+            <div class="weekday">五</div>
+            <div class="weekday">六</div>
+        </div>
+        <div id="daysGrid"></div>
+    </div>
+
+    <script>
+        // DOM元素缓存
+        const elements = {
+            sopDate: document.getElementById('sopDate'),
+            calculateBtn: document.getElementById('calculateBtn'),
+            currentTime: document.getElementById('currentTime'),
+            sopTimeDisplay: document.getElementById('sopTimeDisplay'),
+            chipSopTime: document.getElementById('chipSopTime'),
+            factoryPassword: document.getElementById('factoryPassword'),
+            chipPassword: document.getElementById('chipPassword'),
+            lastUpdated: document.getElementById('lastUpdated'),
+            nextUpdate: document.getElementById('nextUpdate'),
+            datePickerBtn: document.getElementById('datePickerBtn'),
+            datePicker: document.getElementById('datePicker'),
+            prevMonth: document.getElementById('prevMonth'),
+            nextMonth: document.getElementById('nextMonth'),
+            currentMonth: document.getElementById('currentMonth'),
+            daysGrid: document.getElementById('daysGrid')
+        };
+
+        // 固定SOP时间常量
+        const CHIP_FIXED_SOP = "20250830";
+        
+        // 日期变量
+        let selectedDate = new Date(2025, 8, 30); // 2025年9月30日
+        let currentDisplayMonth = new Date(selectedDate);
+        let updateInterval = null;
+
+        // 复制密码功能
+        function copyPassword(type) {
+            let password = '';
+            let btnElement = null;
+            
+            switch(type) {
+                case 'factory':
+                    password = elements.factoryPassword.textContent;
+                    btnElement = event.target;
+                    break;
+                case 'chip':
+                    password = elements.chipPassword.textContent;
+                    btnElement = event.target;
+                    break;
+            }
+            
+            if (password && password !== '------') {
+                navigator.clipboard.writeText(password).then(() => {
+                    const originalText = btnElement.innerHTML;
+                    btnElement.innerHTML = '✓ 已复制';
+                    btnElement.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        btnElement.innerHTML = originalText;
+                        btnElement.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    alert('复制失败，请手动复制');
+                });
+            }
+        }
+
+        // 初始化日期选择器
+        function initDatePicker() {
+            renderCalendar(currentDisplayMonth);
+            
+            elements.datePickerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isVisible = elements.datePicker.style.display === 'block';
+                elements.datePicker.style.display = isVisible ? 'none' : 'block';
+                if (!isVisible) positionDatePicker();
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!elements.datePicker.contains(e.target) && e.target !== elements.datePickerBtn) {
+                    elements.datePicker.style.display = 'none';
+                }
+            });
+            
+            elements.prevMonth.addEventListener('click', () => {
+                currentDisplayMonth.setMonth(currentDisplayMonth.getMonth() - 1);
+                renderCalendar(currentDisplayMonth);
+            });
+            
+            elements.nextMonth.addEventListener('click', () => {
+                currentDisplayMonth.setMonth(currentDisplayMonth.getMonth() + 1);
+                renderCalendar(currentDisplayMonth);
+            });
+        }
+        
+        function positionDatePicker() {
+            const inputRect = elements.sopDate.getBoundingClientRect();
+            elements.datePicker.style.top = `${inputRect.bottom + window.scrollY + 8}px`;
+            elements.datePicker.style.left = `${inputRect.left + window.scrollX}px`;
+        }
+        
+        function renderCalendar(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            
+            elements.currentMonth.textContent = `${year}年${month + 1}月`;
+            elements.daysGrid.innerHTML = '';
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            for (let i = 0; i < firstDay; i++) {
+                elements.daysGrid.appendChild(document.createElement('div'));
+            }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayEl = document.createElement('button');
+                dayEl.className = 'day-btn';
+                dayEl.textContent = day;
+                
+                if (day === selectedDate.getDate() && 
+                    month === selectedDate.getMonth() && 
+                    year === selectedDate.getFullYear()) {
+                    dayEl.classList.add('selected');
+                }
+                
+                dayEl.addEventListener('click', () => {
+                    selectedDate = new Date(year, month, day);
+                    updateSopDateInput();
+                    renderCalendar(currentDisplayMonth);
+                    elements.datePicker.style.display = 'none';
+                    calculatePasswords();
+                });
+                
+                elements.daysGrid.appendChild(dayEl);
+            }
+        }
+        
+        function updateSopDateInput() {
+            const year = selectedDate.getFullYear();
+            const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const day = String(selectedDate.getDate()).padStart(2, '0');
+            elements.sopDate.value = `${year}${month}${day}`;
+        }
+
+        function formatCurrentTime(date) {
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hour = String(date.getHours()).padStart(2, '0');
+            return `${month}${day}${hour}`;
+        }
+
+        function formatDateTime(date) {
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        }
+
+        function updateNextUpdateTime() {
+            const now = new Date();
+            const nextHour = new Date(now);
+            nextHour.setHours(now.getHours() + 1);
+            nextHour.setMinutes(0);
+            nextHour.setSeconds(0);
+            
+            const hours = String(nextHour.getHours()).padStart(2, '0');
+            const minutes = String(nextHour.getMinutes()).padStart(2, '0');
+            const seconds = String(nextHour.getSeconds()).padStart(2, '0');
+            
+            elements.nextUpdate.textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        function calculatePasswords() {
+            const userSopDate = elements.sopDate.value.trim();
+            
+            if (!/^\d{8}$/.test(userSopDate)) {
+                alert('❌ 请输入有效的SOP时间，格式为8位数字（YYYYMMDD）');
+                return;
+            }
+
+            if (userSopDate) {
+                const year = parseInt(userSopDate.substr(0, 4));
+                const month = parseInt(userSopDate.substr(4, 2)) - 1;
+                const day = parseInt(userSopDate.substr(6, 2));
+                const tempDate = new Date(year, month, day);
+                if (tempDate.getFullYear() === year && 
+                    tempDate.getMonth() === month && 
+                    tempDate.getDate() === day) {
+                    selectedDate = tempDate;
+                    currentDisplayMonth = new Date(selectedDate);
+                }
+            }
+
+            const now = new Date();
+            const currentTimeStr = formatCurrentTime(now);
+            const currentHour = now.getHours();
+            
+            elements.currentTime.textContent = currentTimeStr;
+            elements.sopTimeDisplay.textContent = userSopDate;
+            elements.lastUpdated.textContent = formatDateTime(now);
+            elements.chipSopTime.textContent = CHIP_FIXED_SOP;
+            updateNextUpdateTime();
+
+            // 计算工程模式动态密码
+            const userSopNumber = parseInt(userSopDate, 10);
+            const currentNumber = parseInt(currentTimeStr, 10);
+            const userProduct = userSopNumber * currentNumber;
+            let factoryPassword = userProduct - currentHour;
+            factoryPassword = String(factoryPassword).slice(-6).padStart(6, '0');
+
+            // 计算加密区动态密码
+            const chipSopNumber = parseInt(CHIP_FIXED_SOP, 10);
+            const chipProduct = chipSopNumber * currentNumber;
+            const chipPassword = String(chipProduct).slice(-6).padStart(6, '0');
+            
+            // 显示密码（添加动画效果）
+            animatePasswordChange(elements.factoryPassword, factoryPassword);
+            animatePasswordChange(elements.chipPassword, chipPassword);
+        }
+
+        function animatePasswordChange(element, newValue) {
+            element.style.opacity = '0';
+            element.style.transform = 'scale(0.9)';
+            
+            setTimeout(() => {
+                element.textContent = newValue;
+                element.style.transition = 'all 0.3s ease';
+                element.style.opacity = '1';
+                element.style.transform = 'scale(1)';
+            }, 150);
+        }
+
+        function setupAutoUpdate() {
+            calculatePasswords();
+            
+            const now = new Date();
+            const nextHour = new Date(now);
+            nextHour.setHours(now.getHours() + 1);
+            nextHour.setMinutes(0);
+            nextHour.setSeconds(0);
+            nextHour.setMilliseconds(0);
+            const msToNextHour = nextHour - now;
+            
+            setTimeout(() => {
+                calculatePasswords();
+                updateInterval = setInterval(calculatePasswords, 60 * 60 * 1000);
+            }, msToNextHour);
+            
+            // 每秒更新下次更新时间
+            setInterval(updateNextUpdateTime, 1000);
+        }
+
+        // 事件监听
+        elements.calculateBtn.addEventListener('click', calculatePasswords);
+        
+        elements.sopDate.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                calculatePasswords();
+            }
+        });
+
+        // 初始化
+        initDatePicker();
+        setupAutoUpdate();
+        
+        // 添加窗口调整事件
+        window.addEventListener('resize', () => {
+            if (elements.datePicker.style.display === 'block') {
+                positionDatePicker();
+            }
+        });
+    </script>
+</body>
+</html>
