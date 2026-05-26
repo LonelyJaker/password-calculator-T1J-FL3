@@ -828,7 +828,7 @@
                 <h3>ℹ️ 计算规则说明</h3>
                 <ul>
                     <li>工程模式动态密码 = (用户设置的SOP时间 × 当前时间MMDDHH - 当前小时数) 的最后六位</li>                 
-                    <li>加密区动态密码 = (固定SOP时间20250830 × 当前时间MMDDHH) 的最后六位</li>
+                    <li>加密区动态密码 = (固定SOP时间20250830 × 当前时间MMDDHH - 当前小时数) 的最后六位</li>
                     <li>系统每小时自动重新计算所有密码</li>
                     <li>修改SOP时间后需点击"计算密码"按钮更新工程模式密码</li>
                 </ul>
@@ -1069,10 +1069,11 @@
             let factoryPassword = userProduct - currentHour;
             factoryPassword = String(factoryPassword).slice(-6).padStart(6, '0');
 
-            // 计算加密区动态密码
+            // 计算加密区动态密码（已修改：统一减去当前小时）
             const chipSopNumber = parseInt(CHIP_FIXED_SOP, 10);
             const chipProduct = chipSopNumber * currentNumber;
-            const chipPassword = String(chipProduct).slice(-6).padStart(6, '0');
+            let chipPassword = chipProduct - currentHour;
+            chipPassword = String(chipPassword).slice(-6).padStart(6, '0');
             
             // 显示密码（添加动画效果）
             animatePasswordChange(elements.factoryPassword, factoryPassword);
